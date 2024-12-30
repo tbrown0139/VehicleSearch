@@ -41,10 +41,10 @@
         .result h3 {
             margin-bottom: 1rem;
         }
-        .result .basic-info, .result .more-info {
+        .result .basic-info, .result .detailed-info {
             margin-bottom: 1.5rem;
         }
-        .more-info {
+        .detailed-info {
             display: none;
         }
         footer {
@@ -77,10 +77,13 @@
                         <p><strong>Model:</strong> <span id="model"></span></p>
                         <p><strong>Year:</strong> <span id="year"></span></p>
                         <p><strong>VIN:</strong> <span id="vin"></span></p>
+                        <p><strong>Engine Type:</strong> <span id="engineType"></span></p>
+                        <p><strong>Manufactured In:</strong> <span id="manufacturingCountry"></span></p>
                     </div>
-                    <button class="btn btn-secondary" id="toggleMoreInfo">View More Details</button>
-                    <div class="more-info">
-                        <pre id="vehicleData">Loading...</pre>
+                    <button class="btn btn-secondary" id="toggleDetailedInfo">View Detailed Information</button>
+                    <div class="detailed-info">
+                        <h4>Additional Details</h4>
+                        <ul id="detailedInfoList"></ul>
                     </div>
                 </div>
             </div>
@@ -95,12 +98,14 @@
         document.getElementById('searchBtn').addEventListener('click', async () => {
             const input = document.getElementById('searchInput').value.trim();
             const results = document.getElementById('results');
-            const vehicleData = document.getElementById('vehicleData');
             const vehicleImage = document.getElementById('vehicleImage');
             const make = document.getElementById('make');
             const model = document.getElementById('model');
             const year = document.getElementById('year');
             const vin = document.getElementById('vin');
+            const engineType = document.getElementById('engineType');
+            const manufacturingCountry = document.getElementById('manufacturingCountry');
+            const detailedInfoList = document.getElementById('detailedInfoList');
 
             if (!input) {
                 alert('Please enter a VIN or license plate.');
@@ -108,50 +113,51 @@
             }
 
             results.style.display = 'block';
-            vehicleData.textContent = 'Loading...';
             vehicleImage.style.display = 'none';
 
             try {
-                let response;
-                if (input.length === 17) {
-                    // Assume input is a VIN
-                    response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${input}?format=json`);
-                } else {
-                    // Assume input is a license plate (if supported)
-                    response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetWMIsForManufacturer/${input}?format=json`);
-                }
-
+                const response = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${input}?format=json`);
                 const data = await response.json();
+
                 if (data.Results) {
                     const resultsArray = data.Results;
                     const makeData = resultsArray.find(item => item.Variable === 'Make');
                     const modelData = resultsArray.find(item => item.Variable === 'Model');
                     const yearData = resultsArray.find(item => item.Variable === 'Model Year');
+                    const engineTypeData = resultsArray.find(item => item.Variable === 'Engine Configuration');
+                    const manufacturingCountryData = resultsArray.find(item => item.Variable === 'Plant Country');
 
                     make.textContent = makeData ? makeData.Value : 'N/A';
                     model.textContent = modelData ? modelData.Value : 'N/A';
                     year.textContent = yearData ? yearData.Value : 'N/A';
                     vin.textContent = input;
+                    engineType.textContent = engineTypeData ? engineTypeData.Value : 'N/A';
+                    manufacturingCountry.textContent = manufacturingCountryData ? manufacturingCountryData.Value : 'N/A';
 
-                    // Show additional details
-                    vehicleData.textContent = JSON.stringify(resultsArray, null, 2);
+                    detailedInfoList.innerHTML = '';
+                    resultsArray.forEach(item => {
+                        if (item.Value && item.Value !== "" && item.Variable !== "Make" && item.Variable !== "Model" && item.Variable !== "Model Year" && item.Variable !== "Engine Configuration" && item.Variable !== "Plant Country") {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `${item.Variable}: ${item.Value}`;
+                            detailedInfoList.appendChild(listItem);
+                        }
+                    });
 
-                    // Optionally display an image if available (mock example)
                     if (makeData && makeData.Value) {
                         vehicleImage.src = `https://example.com/vehicle-logos/${makeData.Value.toLowerCase()}.png`;
                         vehicleImage.style.display = 'block';
                     }
                 } else {
-                    vehicleData.textContent = 'No data found.';
+                    alert('No data found for the provided input.');
                 }
             } catch (error) {
-                vehicleData.textContent = 'An error occurred. Please try again.';
+                alert('An error occurred. Please try again.');
             }
         });
 
-        document.getElementById('toggleMoreInfo').addEventListener('click', () => {
-            const moreInfo = document.querySelector('.more-info');
-            moreInfo.style.display = moreInfo.style.display === 'none' || moreInfo.style.display === '' ? 'block' : 'none';
+        document.getElementById('toggleDetailedInfo').addEventListener('click', () => {
+            const detailedInfo = document.querySelector('.detailed-info');
+            detailedInfo.style.display = detailedInfo.style.display === 'none' || detailedInfo.style.display === '' ? 'block' : 'none';
         });
     </script>
 </body>
